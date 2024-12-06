@@ -185,12 +185,6 @@ pub fn make_build_cargo_target_command(
     let mut command = Cmd::new(cargo_cmd, "build your app with Cargo");
     if auditable {
         command.arg("auditable");
-        if wrapper.is_some() {
-            return Err(DistError::CannotDoCargoAuditableAndCrossCompile {
-                host: host.to_owned(),
-                target,
-            });
-        }
     }
     match wrapper {
         None => {

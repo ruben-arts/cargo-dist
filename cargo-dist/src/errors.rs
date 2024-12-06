@@ -534,18 +534,6 @@ pub enum DistError {
         details: String,
     },
 
-    /// Cannot use cross-compilation with cargo-auditable
-    #[error(
-        "Cross-compilation builds from {host} to {target} cannot be used with cargo-auditable"
-    )]
-    #[diagnostic(help("set cargo-auditable to false or don't do cross-compilation"))]
-    CannotDoCargoAuditableAndCrossCompile {
-        /// The host system
-        host: Triple,
-        /// The target system
-        target: Triple,
-    },
-
     /// missing "build-command" for a package that needs one
     #[error("dist package was missing a build-command\n{manifest}")]
     #[diagnostic(help(
