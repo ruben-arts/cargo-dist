@@ -149,6 +149,10 @@ pub struct DistMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unix_archive: Option<ZipStyle>,
 
+    /// Whether to always put the binaries in the root of the archive (defaults to false)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub binaries_in_root: Option<bool>,
+
     /// Replace the app's name with this value for the npm package's name
     #[serde(skip_serializing_if = "Option::is_none")]
     pub npm_package: Option<String>,
@@ -465,6 +469,7 @@ impl DistMetadata {
             auto_includes: _,
             windows_archive: _,
             unix_archive: _,
+            binaries_in_root: _,
             npm_package: _,
             npm_scope: _,
             checksum: _,
@@ -561,6 +566,7 @@ impl DistMetadata {
             auto_includes,
             windows_archive,
             unix_archive,
+            binaries_in_root,
             npm_package,
             npm_scope,
             checksum,
@@ -734,6 +740,9 @@ impl DistMetadata {
         }
         if unix_archive.is_none() {
             *unix_archive = workspace_config.unix_archive;
+        }
+        if binaries_in_root.is_none() {
+            *binaries_in_root = workspace_config.binaries_in_root;
         }
         if npm_package.is_none() {
             npm_package.clone_from(&workspace_config.npm_package);
