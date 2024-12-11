@@ -209,12 +209,12 @@ impl Codesign {
         cmd.stdout_to_stderr();
         cmd.output()?;
 
-        self.notarize(file)?;
+        self.notarize(file, keychain)?;
 
         Ok(())
     }
 
-    pub fn notarize(&self, file: &Utf8Path) -> DistResult<()> {
+    fn notarize(&self, file: &Utf8Path, keychain: Keychain) -> DistResult<()> {
         // # Add Apple Developer ID credentials to keychain
         // xcrun notarytool store-credentials "$KEYCHAIN_ENTRY" \
         //     --team-id "$APPLEID_TEAMID" \
@@ -247,7 +247,7 @@ impl Codesign {
         cmd.arg("--team-id").arg(&appleid_teamid);
         cmd.arg("--apple-id").arg(&appleid_username);
         cmd.arg("--password").arg(&appleid_password);
-        cmd.arg("--keychain").arg(&self.env.identity);
+        cmd.arg("--keychain").arg(keychain.path);
 
         cmd.stdout_to_stderr();
         cmd.output()?;
