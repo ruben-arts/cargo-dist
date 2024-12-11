@@ -188,9 +188,18 @@ impl Codesign {
         let keychain = Keychain::create(password)?;
         keychain.import_certificate(&self.env.certificate, &self.env.password)?;
 
+        let additional_args : Vec<String> = if let Ok(additional_args) = std::env::var("CODESIGN_ADDITIONAL_ARGS") {
+            additional_args.split_whitespace().map(|s| s.to_string()).collect()
+        } else {
+            vec![]
+        };
+
         let mut cmd = Cmd::new("/usr/bin/codesign", "sign macOS artifacts");
         cmd.arg("--sign").arg(&self.env.identity);
         cmd.arg("--keychain").arg(&keychain.path);
+        for arg in additional_args {
+            cmd.arg(arg);
+        }
         cmd.arg(file);
         cmd.stdout_to_stderr();
         cmd.output()?;
