@@ -195,6 +195,74 @@ impl Codesign {
         cmd.stdout_to_stderr();
         cmd.output()?;
 
+        self.notarize(file)?;
+
+        Ok(())
+    }
+
+    pub fn notarize(&self, file: &Utf8Path) -> DistResult<()> {
+        // # Add Apple Developer ID credentials to keychain
+        // xcrun notarytool store-credentials "$KEYCHAIN_ENTRY" \
+        //     --team-id "$APPLEID_TEAMID" \
+        //     --apple-id "$APPLEID_USERNAME" \
+        //     --password "$APPLEID_PASSWORD" \
+        //     --keychain "$KEYCHAIN_PATH"
+
+        // First, add the credentials to the keychain
+        let appleid_teamid =
+            std::env::var("APPLEID_TEAMID").map_err(|_| DistError::MissingEnv {
+                var: "APPLEID_TEAMID",
+            })?;
+        let appleid_username =
+            std::env::var("APPLEID_USERNAME").map_err(|_| DistError::MissingEnv {
+                var: "APPLEID_USERNAME",
+            })?;
+        let appleid_password =
+            std::env::var("APPLEID_PASSWORD").map_err(|_| DistError::MissingEnv {
+                var: "APPLEID_PASSWORD",
+            })?;
+
+        const KEYCHAIN_ENTRY: &str = "AC_PASSWORD";
+
+        let mut cmd = Cmd::new("xcrun", "notarytool store-credentials");
+        cmd.arg("notarytool");
+        cmd.arg("store-credentials");
+        cmd.arg(KEYCHAIN_ENTRY);
+        cmd.arg("--team-id").arg(&appleid_teamid);
+        cmd.arg("--apple-id").arg(&appleid_username);
+        cmd.arg("--password").arg(&appleid_password);
+        cmd.arg("--keychain").arg(&self.env.identity);
+
+        cmd.stdout_to_stderr();
+        cmd.output()?;
+
+        // zip the file
+        let temp_dir = TempDir::new()?;
+        // TODO remove unwrap
+        let file_name = file.file_name().unwrap();
+        let zip_file_name = format!("{}.zip", file_name);
+
+        let zip_path = temp_dir.path().join(zip_file_name);
+        let mut cmd = Cmd::new("zip", "zip the binary for notarization");
+        cmd.arg(zip_path);
+        cmd.arg(file);
+
+        cmd.stdout_to_stderr();
+        cmd.output()?;
+
+        // # Notarize the binary
+        // xcrun notarytool submit pixi.zip --keychain-profile "$KEYCHAIN_ENTRY" --wait
+
+        let mut cmd = Cmd::new("xcrun", "notarytool submit");
+        cmd.arg("notarytool");
+        cmd.arg("submit");
+        cmd.arg(zip_path);
+        cmd.arg("--keychain-profile").arg(KEYCHAIN_ENTRY);
+        cmd.arg("--wait");
+
+        cmd.stdout_to_stderr();
+        cmd.output()?;
+
         Ok(())
     }
 }
