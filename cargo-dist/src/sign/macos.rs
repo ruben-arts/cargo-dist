@@ -24,7 +24,7 @@ use base64::Engine;
 use camino::{Utf8Path, Utf8PathBuf};
 use cargo_dist_schema::TargetTripleRef;
 use temp_dir::TempDir;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{create_tmp, DistError, DistResult};
 
@@ -187,12 +187,17 @@ impl Codesign {
         let password = uuid::Uuid::new_v4().as_hyphenated().to_string();
         let keychain = Keychain::create(password)?;
         keychain.import_certificate(&self.env.certificate, &self.env.password)?;
-
-        let additional_args : Vec<String> = if let Ok(additional_args) = std::env::var("CODESIGN_ADDITIONAL_ARGS") {
-            additional_args.split_whitespace().map(|s| s.to_string()).collect()
-        } else {
-            vec![]
-        };
+        info!("Signing file: {}", file);
+        let additional_args: Vec<String> =
+            if let Ok(additional_args) = std::env::var("CODESIGN_ADDITIONAL_ARGS") {
+                info!("Additional codesign arguments: {}", additional_args);
+                additional_args
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect()
+            } else {
+                vec![]
+            };
 
         let mut cmd = Cmd::new("/usr/bin/codesign", "sign macOS artifacts");
         cmd.arg("--sign").arg(&self.env.identity);
@@ -218,18 +223,20 @@ impl Codesign {
         //     --keychain "$KEYCHAIN_PATH"
 
         // First, add the credentials to the keychain
-        let appleid_teamid =
-            std::env::var("APPLEID_TEAMID").map_err(|_| DistError::MissingEnv {
-                var: "APPLEID_TEAMID",
-            })?;
-        let appleid_username =
-            std::env::var("APPLEID_USERNAME").map_err(|_| DistError::MissingEnv {
-                var: "APPLEID_USERNAME",
-            })?;
-        let appleid_password =
-            std::env::var("APPLEID_PASSWORD").map_err(|_| DistError::MissingEnv {
-                var: "APPLEID_PASSWORD",
-            })?;
+        let (appleid_teamid, appleid_username, appleid_password) = (
+            std::env::var("APPLEID_TEAMID").ok(),
+            std::env::var("APPLEID_USERNAME").ok(),
+            std::env::var("APPLEID_PASSWORD").ok(),
+        );
+
+        let (appleid_teamid, appleid_username, appleid_password) =
+            match (appleid_teamid, appleid_username, appleid_password) {
+                (Some(teamid), Some(username), Some(password)) => (teamid, username, password),
+                _ => {
+                    warn!("Apple ID credentials are missing - skipping notarization");
+                    return Ok(());
+                }
+            };
 
         const KEYCHAIN_ENTRY: &str = "AC_PASSWORD";
 
@@ -253,7 +260,7 @@ impl Codesign {
 
         let zip_path = temp_dir.path().join(zip_file_name);
         let mut cmd = Cmd::new("zip", "zip the binary for notarization");
-        cmd.arg(zip_path);
+        cmd.arg(&zip_path);
         cmd.arg(file);
 
         cmd.stdout_to_stderr();
