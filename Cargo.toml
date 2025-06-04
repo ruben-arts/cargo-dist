@@ -23,7 +23,7 @@ axoproject = { version = "=0.25.1", path = "axoproject", default-features = fals
 axocli = { version = "0.2.0" }
 axoupdater = { version = "0.8.1" }
 axotag = "0.2.0"
-axoasset = { version = "1.0.1", features = ["json-serde", "toml-serde", "toml-edit", "compression", "remote"] }
+axoasset = { git = "https://github.com/trim21/axoasset.git", rev = '570734d3656c75141a64975427eb8982cd0b13a4', features = ["json-serde", "toml-serde", "toml-edit", "compression", "compression-zip", "remote"] }
 axoprocess = { version = "0.2.0" }
 gazenot = { version = "0.3.3" }
 
