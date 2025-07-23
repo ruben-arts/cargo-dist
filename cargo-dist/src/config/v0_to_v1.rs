@@ -40,6 +40,7 @@ impl DistMetadata {
             msvc_crt_static,
             windows_archive,
             unix_archive,
+            binaries_in_root,
             npm_package,
             npm_scope,
             checksum,
@@ -103,6 +104,7 @@ impl DistMetadata {
             windows_archive,
             unix_archive,
             package_libraries,
+            binaries_in_root,
         });
         let needs_artifacts = archive_layer.is_some()
             || source_tarball.is_some()
