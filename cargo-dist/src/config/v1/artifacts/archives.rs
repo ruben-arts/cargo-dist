@@ -15,6 +15,8 @@ pub struct ArchiveConfig {
     pub unix_archive: ZipStyle,
     /// Whether to include built libraries in the release archive
     pub package_libraries: Vec<LibraryStyle>,
+    /// Whether to always put the binaries in the root of the archive
+    pub binaries_in_root: bool,
 }
 
 /// archive config (raw from config file)
@@ -48,6 +50,12 @@ pub struct ArchiveLayer {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default, with = "opt_string_or_vec")]
     pub package_libraries: Option<Vec<LibraryStyle>>,
+
+    /// Whether to always put the binaries in the root of the archive
+    ///
+    /// Defaults to false.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub binaries_in_root: Option<bool>,
 }
 
 impl ArchiveConfig {
@@ -59,6 +67,7 @@ impl ArchiveConfig {
             windows_archive: ZipStyle::Zip,
             unix_archive: ZipStyle::Tar(CompressionImpl::Xzip),
             package_libraries: vec![],
+            binaries_in_root: false,
         }
     }
 }
@@ -73,6 +82,7 @@ impl ApplyLayer for ArchiveConfig {
             windows_archive,
             unix_archive,
             package_libraries,
+            binaries_in_root,
         }: Self::Layer,
     ) {
         self.include.apply_val(include);
@@ -80,6 +90,7 @@ impl ApplyLayer for ArchiveConfig {
         self.windows_archive.apply_val(windows_archive);
         self.unix_archive.apply_val(unix_archive);
         self.package_libraries.apply_val(package_libraries);
+        self.binaries_in_root.apply_val(binaries_in_root);
     }
 }
 impl ApplyLayer for ArchiveLayer {
@@ -92,6 +103,7 @@ impl ApplyLayer for ArchiveLayer {
             windows_archive,
             unix_archive,
             package_libraries,
+            binaries_in_root,
         }: Self::Layer,
     ) {
         self.include.apply_opt(include);
@@ -99,5 +111,6 @@ impl ApplyLayer for ArchiveLayer {
         self.windows_archive.apply_opt(windows_archive);
         self.unix_archive.apply_opt(unix_archive);
         self.package_libraries.apply_opt(package_libraries);
+        self.binaries_in_root.apply_opt(binaries_in_root);
     }
 }

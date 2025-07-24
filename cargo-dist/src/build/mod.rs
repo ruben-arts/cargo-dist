@@ -152,10 +152,10 @@ impl BuildExpectations {
     /// * checking src_path was set by found_bin
     /// * computing linkage for the binary
     /// * copying the binary and symbols to their final homes
+    /// * code signing / hashing
     ///
     /// In the future this may also include:
     ///
-    /// * code signing / hashing
     /// * stripping
     pub fn process_bins(&self, dist: &DistGraph, manifest: &mut DistManifest) -> DistResult<()> {
         let mut missing = vec![];

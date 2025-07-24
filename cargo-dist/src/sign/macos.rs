@@ -25,7 +25,7 @@ use base64::Engine;
 use camino::{Utf8Path, Utf8PathBuf};
 use dist_schema::TripleNameRef;
 use temp_dir::TempDir;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{create_tmp, DistError, DistResult};
 
@@ -188,11 +188,95 @@ impl Codesign {
         let password = uuid::Uuid::new_v4().as_hyphenated().to_string();
         let keychain = Keychain::create(password)?;
         keychain.import_certificate(&self.env.certificate, &self.env.password)?;
+        info!("Signing file: {}", file);
+        let additional_args: Vec<String> =
+            if let Ok(additional_args) = std::env::var("CODESIGN_ADDITIONAL_ARGS") {
+                info!("Additional codesign arguments: {}", additional_args);
+                additional_args
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect()
+            } else {
+                vec![]
+            };
 
         let mut cmd = Cmd::new("/usr/bin/codesign", "sign macOS artifacts");
         cmd.arg("--sign").arg(&self.env.identity);
         cmd.arg("--keychain").arg(&keychain.path);
+        for arg in additional_args {
+            cmd.arg(arg);
+        }
         cmd.arg(file);
+        cmd.stdout_to_stderr();
+        cmd.output()?;
+
+        self.notarize(file, keychain)?;
+
+        Ok(())
+    }
+
+    fn notarize(&self, file: &Utf8Path, keychain: Keychain) -> DistResult<()> {
+        // # Add Apple Developer ID credentials to keychain
+        // xcrun notarytool store-credentials "$KEYCHAIN_ENTRY" \
+        //     --team-id "$APPLEID_TEAMID" \
+        //     --apple-id "$APPLEID_USERNAME" \
+        //     --password "$APPLEID_PASSWORD" \
+        //     --keychain "$KEYCHAIN_PATH"
+
+        // First, add the credentials to the keychain
+        let (appleid_teamid, appleid_username, appleid_password) = (
+            std::env::var("APPLEID_TEAMID").ok(),
+            std::env::var("APPLEID_USERNAME").ok(),
+            std::env::var("APPLEID_PASSWORD").ok(),
+        );
+
+        let (appleid_teamid, appleid_username, appleid_password) =
+            match (appleid_teamid, appleid_username, appleid_password) {
+                (Some(teamid), Some(username), Some(password)) => (teamid, username, password),
+                _ => {
+                    warn!("Apple ID credentials are missing - skipping notarization");
+                    return Ok(());
+                }
+            };
+
+        const KEYCHAIN_ENTRY: &str = "AC_PASSWORD";
+
+        let mut cmd = Cmd::new("xcrun", "notarytool store-credentials");
+        cmd.arg("notarytool");
+        cmd.arg("store-credentials");
+        cmd.arg(KEYCHAIN_ENTRY);
+        cmd.arg("--team-id").arg(&appleid_teamid);
+        cmd.arg("--apple-id").arg(&appleid_username);
+        cmd.arg("--password").arg(&appleid_password);
+        cmd.arg("--keychain").arg(keychain.path);
+
+        cmd.stdout_to_stderr();
+        cmd.output()?;
+
+        // zip the file
+        let temp_dir = TempDir::new()?;
+        // TODO remove unwrap
+        let file_name = file.file_name().unwrap();
+        let zip_file_name = format!("{}.zip", file_name);
+
+        let zip_path = temp_dir.path().join(zip_file_name);
+        let mut cmd = Cmd::new("zip", "zip the binary for notarization");
+        cmd.arg(&zip_path);
+        cmd.arg(file);
+
+        cmd.stdout_to_stderr();
+        cmd.output()?;
+
+        // # Notarize the binary
+        // xcrun notarytool submit pixi.zip --keychain-profile "$KEYCHAIN_ENTRY" --wait
+
+        let mut cmd = Cmd::new("xcrun", "notarytool submit");
+        cmd.arg("notarytool");
+        cmd.arg("submit");
+        cmd.arg(zip_path);
+        cmd.arg("--keychain-profile").arg(KEYCHAIN_ENTRY);
+        cmd.arg("--wait");
+
         cmd.stdout_to_stderr();
         cmd.output()?;
 
