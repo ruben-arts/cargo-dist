@@ -25,7 +25,7 @@ axocli = { version = "0.3.0" }
 axoupdater = { version = "0.9.0" }
 axotag = "0.3.0"
 axoprocess = { version = "0.2.1" }
-axoasset = { git = "https://github.com/ruben-arts/axoasset.git", rev = 'a954d596068b1bfeb76572c55477c1412c31e9c8', features = ["json-serde", "toml-serde", "toml-edit", "yaml-serde", "compression", "compression-zip", "remote"] }
+axoasset = { version = "1.4.0", features = ["json-serde", "toml-serde", "toml-edit", "yaml-serde", "compression", "compression-zip", "remote"] }
 gazenot = { version = "0.3.3" }
 
 # third-party deps
