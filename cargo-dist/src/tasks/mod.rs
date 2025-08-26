@@ -522,6 +522,10 @@ pub fn build_wrapper_for_cross(
         },
         // compiling for Windows (making PE binaries, .dll files, etc.)
         OperatingSystem::Windows => match host.operating_system {
+            OperatingSystem::Windows => {
+                // from win to win is generally supported.
+                Ok(None)
+            }
             OperatingSystem::Linux | OperatingSystem::Darwin(_) => {
                 // cargo-xwin is made for that
                 Ok(Some(CargoBuildWrapper::Xwin))
@@ -1866,6 +1870,9 @@ impl<'pkg_graph> DistGraphBuilder<'pkg_graph> {
         // This is kinda inconsistent, so maybe we should make both flat?
         // (It's hard to strip-prefix zips, so making them both have an extra dir is annoying)
         let with_root = if let ZipStyle::Zip = zip_style {
+            None
+        } else if release.config.artifacts.archives.binaries_in_root {
+            // User config override for having the binaries in the root of the archive
             None
         } else {
             Some(Utf8PathBuf::from(artifact_dir_name.clone()))
